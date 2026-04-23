@@ -1,2 +1,1 @@
-INSERT INTO Tab (name) VALUES ('Thomas')
-
+INSERT INTO tab (name) VALUES ('Thomas');
