@@ -1,30 +1,66 @@
+name: 'Build Artifact'
+
 on:
-  push:
-    branches:
-      - main
+ workflow_dispatch: 
+  inputs:
+    TARGET_ENV:
+     description: 'target env'
+     required: true
+     type: choice
+     options:
+       - dev
+       - prd
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs: 
+      artifact_name: ${{ steps.build_step.outputs.artifact_name }}
     steps:
       - name: 'Checkout repository'
         uses: actions/checkout@v4
 
-      - name: 'Check Application version'
-        run: echo "Application version $cat (version.txt)"
+      - name: 'Check Application Version'
+        run: echo "Application version $(cat version.txt)"
 
-      - name: 'Build Appication'
-        id: build_step
+      - name: 'Build Application'
+        id: build_step 
         run: |
-          VERSION=$(cat version.txt)
-          ARTIFACT_NAME="artifact_${VERSION}"
+          VERSION_CI=$(cat version.txt)
+          ARTIFACT_NAME="artifact_${VERSION_CI}"
           zip -r "scripts/${ARTIFACT_NAME}.zip" scripts/
           echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.build_step.outputs.artifact_name}}
+          name: ${{ steps.build_step.outputs.artifact_name }}
           path: scripts/*.zip
-          
-          
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: ${{ inputs.TARGET_ENV }}
+    steps:
+      - name: 'Download Artifact'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: artifact
+
+      - name: 'Extract Artifact'
+        run: unzip artifact/*.zip -d extracted
+
+      - name: 'Install PostgreSQL'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: 'Execute SQL'
+        run: |
+           export PGPASSWORD="${{ secrets.SUPABASE_PASSWORD }}"
+             psql -h "${{ secrets.SUPABASE_HOST }}" \
+                 -p 5432 \
+                 -d postgres \
+                 -U "${{ secrets.SUPABASE_USER }}" \
+                 -f extracted/scripts/dev.sql
