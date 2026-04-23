@@ -16,7 +16,7 @@ jobs:
       - name: 'Build Appication'
         id: build_step
         run: |
-          VERSION=$cat(version.txt)
+          VERSION=$(cat version.txt)
           ARTIFACT_NAME="artifact_{VERSION}"
           zip -r "scripts/${ARTIFACT_NAME}.zip" scripts/
           echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
