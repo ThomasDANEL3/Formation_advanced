@@ -1,6 +1,6 @@
 name : "Demo"
 
-On : 
+on : 
   push :
     branches :
       -main
